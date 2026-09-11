@@ -31,11 +31,18 @@ export default function RootLayout() {
     if (!isReady || !rootNavigationState?.key) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
+    const inLoginRoute = segments[0] === 'login';
 
-    if (!token && inAuthGroup) {
-      router.replace('/login');
-    } else if (token && !inAuthGroup) {
-      router.replace('/(tabs)');
+    if (!token) {
+      // If the user is not authenticated and they are trying to access a protected route (or root), redirect to login
+      if (inAuthGroup || segments.length === 0) {
+        router.replace('/login');
+      }
+    } else {
+      // If the user is authenticated and they are trying to access login (or root), redirect to (tabs)
+      if (inLoginRoute || segments.length === 0) {
+        router.replace('/(tabs)');
+      }
     }
   }, [token, segments, isReady, rootNavigationState?.key, router]);
 

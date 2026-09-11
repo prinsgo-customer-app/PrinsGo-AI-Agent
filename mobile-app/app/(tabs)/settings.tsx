@@ -13,7 +13,7 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     logout();
-    router.replace('/login');
+    // The router.replace is handled by _layout.tsx responding to token state change
   };
 
   const OptionItem = ({ icon, title, value, type = 'navigate' }: any) => (

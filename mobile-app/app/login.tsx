@@ -27,7 +27,7 @@ export default function LoginScreen() {
       const res = await api.post('/auth/login', { email, password });
       if (res.data && res.data.token) {
         setAuth(res.data.user, res.data.token, res.data.workspaceId);
-        router.replace('/(tabs)');
+        // The router.replace is handled by _layout.tsx responding to token state change
       } else {
         throw new Error('Invalid response from server');
       }
