@@ -50,18 +50,38 @@ export const ChatScreen = ({ route }: any) => {
 
          if (execRes.data?.success) {
              const executedTask = execRes.data.data;
-             let aiResponse = 'Task executed successfully (see Tasks tab for details)';
+             let aiResponse = '';
 
              if (executedTask.result) {
                  if (typeof executedTask.result === 'string') {
                      aiResponse = executedTask.result;
-                 } else if (executedTask.result.text) {
+                 } else if (
+                     executedTask.result.candidates?.[0]?.content?.parts?.[0]?.text
+                 ) {
+                     // Gemini response schema
+                     aiResponse = executedTask.result.candidates[0].content.parts[0].text;
+                 } else if (
+                     executedTask.result.choices?.[0]?.message?.content
+                 ) {
+                     // OpenAI / Hermes response schema
+                     aiResponse = executedTask.result.choices[0].message.content;
+                 } else if (
+                     Array.isArray(executedTask.result.content) &&
+                     executedTask.result.content[0]?.text
+                 ) {
+                     // Anthropic response schema
+                     aiResponse = executedTask.result.content[0].text;
+                 } else if (typeof executedTask.result.text === 'string') {
                      aiResponse = executedTask.result.text;
-                 } else if (executedTask.result.content) {
+                 } else if (typeof executedTask.result.content === 'string') {
                      aiResponse = executedTask.result.content;
                  } else {
                      aiResponse = JSON.stringify(executedTask.result);
                  }
+             }
+
+             if (!aiResponse) {
+                 aiResponse = 'Task execution returned no response.';
              }
 
              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'ai', text: aiResponse }]);
