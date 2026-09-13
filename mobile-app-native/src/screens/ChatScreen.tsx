@@ -26,31 +26,55 @@ export const ChatScreen = ({ route }: any) => {
     setLoading(true);
 
     try {
-      // Send task creation
+      // Create actual task via backend
       const res = await api.post(`/api/ai-agent/workspaces/${workspaceId}/tasks`, {
         agentId,
         instructions: userMessage.text,
-        requiresApproval: false, // Simplifying for chat
+        requiresApproval: false,
         requiredPermissions: []
       });
 
       if (res.data?.success && res.data?.data?._id) {
-         const taskId = res.data.data._id;
+         const task = res.data.data;
 
-         // Execute task
+         if (task.status === 'WAITING_FOR_APPROVAL') {
+             setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: 'Approval Required: This task requires approval before execution.' }]);
+             setLoading(false);
+             return;
+         }
+
+         const taskId = task._id;
+
+         // Execute actual task via backend
          const execRes = await api.post(`/api/ai-agent/workspaces/${workspaceId}/tasks/${taskId}/execute`);
+
          if (execRes.data?.success) {
-             const aiResponse = execRes.data.data.result || 'Task executed (No direct text result)';
+             const executedTask = execRes.data.data;
+             let aiResponse = 'Task executed successfully (see Tasks tab for details)';
+
+             if (executedTask.result) {
+                 if (typeof executedTask.result === 'string') {
+                     aiResponse = executedTask.result;
+                 } else if (executedTask.result.text) {
+                     aiResponse = executedTask.result.text;
+                 } else if (executedTask.result.content) {
+                     aiResponse = executedTask.result.content;
+                 } else {
+                     aiResponse = JSON.stringify(executedTask.result);
+                 }
+             }
+
              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'ai', text: aiResponse }]);
          } else {
-             setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: 'Task execution failed.' }]);
+             setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: execRes.data?.message || 'Task execution failed.' }]);
          }
       } else {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: 'Task creation failed.' }]);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: res.data?.message || 'Task creation failed.' }]);
       }
     } catch (error: any) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: error.message || 'An error occurred.' }]);
+      console.error('Chat error:', error?.response?.data || error);
+      const errorMessage = error?.response?.data?.message || error.message || 'An error occurred during task execution.';
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', text: errorMessage }]);
     } finally {
       setLoading(false);
     }
